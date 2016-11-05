@@ -1,0 +1,23 @@
+{
+  "name": "nsq-rocket",
+  "version": "0.1.0",
+  "description": "",
+  "main": "rocket.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daack/nsq-rocket.git"
+  },
+  "author": "Matteo Maselli",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/daack/nsq-rocket/issues"
+  },
+  "homepage": "https://github.com/daack/nsq-rocket#readme",
+  "dependencies": {
+    "node-uuid": "^1.4.7",
+    "nsqjs": "^0.7.12"
+  }
+}
