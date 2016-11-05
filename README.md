@@ -1,4 +1,4 @@
-# nsq-rocket
+# NSQ Rocket :rocket:
 
 ```javascript
 var Rocket = require('nsq-rocket');
