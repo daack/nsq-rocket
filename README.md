@@ -16,11 +16,11 @@ var rocket = Rocket({
 
 rocket
 .topic('sample_topic')
-.landing('test_channel', function(msg, done) {
+.landing('test_channel', 'key', function(msg, done) {
   console.log(msg.body.toString())
   done(null, 'risposta')
 })
-.launch('message', (res) => {
+.launch('message', 'key', (res) => {
   console.log(res.body.toString())
   res.finish()
 })
