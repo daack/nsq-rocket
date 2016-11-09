@@ -20,6 +20,14 @@ rocket
   console.log(msg.body.toString())
   done(null, 'risposta')
 })
+.default(function(msg, done) {
+  console.log(msg.body.toString())
+  done(null, 'risposta')
+})
+.launch('message', 'key_not_exists', (res) => {
+  console.log(res.body.toString())
+  res.finish()
+})
 .launch('message', 'key', (res) => {
   console.log(res.body.toString())
   res.finish()

@@ -7,7 +7,7 @@ function NsqRocket(opts) {
     }
 
     this.options = opts
-    this.reader = new RocketReader(opts.reader)
+    this.reader = new RocketReader(this, opts.reader)
     this.writer = new RocketWriter(opts.writer)
 }
 
@@ -28,40 +28,16 @@ NsqRocket.prototype.landing = function(channel, routingKey, cb) {
         channel = uuid.v4()
     }
 
-    const _this = this
-
     this
     .reader
     .setNsqReader(this.currentTopic, channel)
-    .add(routingKey, function(msg) {
-        cb.call(this, msg, init_replier(msg))
-    })
+    .add(routingKey, cb)
 
-    function init_replier(msg) {
-        let topic = null
-        let routingKey = null
+    return this
+}
 
-        try {
-            const body = msg.json()
-            topic = body.replyTo
-            routingKey = body.replyKey
-        } catch(err) {
-            //
-        }
-
-        return (err, message) => {
-            if (err) {
-                msg.requeue()
-            } else {
-                msg.finish()
-            }
-
-            if (topic && routingKey) {
-                _this.launch(message, routingKey, topic)
-            }
-        }
-    }
-
+NsqRocket.prototype.default = function(cb) {
+    this.reader.addDefault(this.currentTopic, cb)
     return this
 }
 
@@ -107,67 +83,99 @@ NsqRocket.prototype.addReplierReaderKey = function(replyKey, cb) {
     .add(replyKey, cb, true)
 }
 
-function RocketReader(options) {
+function RocketReader(rocket, options) {
     this.store = new Store()
+    this.defaultStore = new Store()
+    this.rocket = rocket
     this.options = options
     this.onces = []
 }
 
 RocketReader.prototype.setNsqReader = function(topic, channel) {
     const key = topic + channel
-    let reader_store = this.store.get(key)
+    let readerStore = this.store.get(key)
 
-    if (!reader_store) {
+    if (!readerStore) {
         const reader = new nsqjs.Reader(topic, channel, this.options)
 
+        readerStore = new Store()
+
         reader.connect()
-
-        reader_store = new Store()
-
-        reader.on(nsqjs.Reader.MESSAGE, this.nsqMessage(reader, reader_store))
-        reader.on(nsqjs.Reader.DISCARD, this.nsqMessageDiscard(reader, reader_store))
+        reader.on(nsqjs.Reader.MESSAGE, this.nsqMessage(reader, readerStore))
+        reader.on(nsqjs.Reader.DISCARD, this.nsqMessageDiscard(reader, readerStore))
         reader.on(nsqjs.Reader.ERROR, this.nsqError)
         reader.on(nsqjs.Reader.NSQD_CONNECTED, this.nsqdConnected)
         reader.on(nsqjs.Reader.NSQD_CLOSED, this.nsqdClosed)
 
-        this.store.set(key, reader_store)
+        this.store.set(key, readerStore)
     }
-    this.reader_store = reader_store;
+    this.readerStore = readerStore;
 
     return this
 }
 
 RocketReader.prototype.add = function(routingKey, cb, once = false) {
     if (once) this.onces.push(routingKey)
-    this.reader_store.set(routingKey, cb)
+    this.readerStore.set(routingKey, cb)
+}
+
+RocketReader.prototype.addDefault = function(topic, cb) {
+    this.defaultStore.set(topic, cb)
+}
+
+RocketReader.prototype.callMessage = function(cb, reader, msg) {
+    const _this = this
+    cb.call(reader, msg, replierFor(msg))
+
+    function replierFor(msg) {
+        let topic = null
+        let routingKey = null
+
+        try {
+            const body = msg.json()
+            topic = body.replyTo
+            routingKey = body.replyKey
+        } catch(err) {
+            //
+        }
+
+        return (err, message) => {
+            if (err) {
+                msg.requeue()
+            } else {
+                msg.finish()
+            }
+
+            if (topic && routingKey) {
+                _this.rocket.launch(message, routingKey, topic)
+            }
+        }
+    }
 }
 
 RocketReader.prototype.nsqMessage = function(reader, store) {
     let routingKey = null
-    const _this = this
+    let cb = null
 
     return (msg) => {
         try {
             const body = msg.json()
             routingKey = body.routingKey || null
         } catch(err) {
-            //
+
         }
 
-        const cb = store.get(routingKey)
+        if ((cb = store.get(routingKey)) || (cb = this.defaultStore.get(reader.topic))) {
+            this.callMessage(cb, reader, msg)
 
-        if (cb) {
-            cb.call(reader, msg)
-
-            const index = _this.onces.indexOf(routingKey)
-            if (index != -1) {
+            if (index = this.onces.indexOf(routingKey)) {
                 store.del(routingKey)
-                _this.onces.splice(index, 1);
+                this.onces.splice(index, 1)
             }
-        } else {
-            //TODO: da parametrizzare
-            (msg.attempts > 5) ? msg.finish() : msg.requeue()
+            return
         }
+
+        (msg.attempts > 5) ? msg.finish() : msg.requeue()
     }
 }
 
