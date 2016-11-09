@@ -12,7 +12,7 @@ function NsqRocket(opts) {
 }
 
 NsqRocket.prototype.topic = function(topic) {
-    this.topic = topic
+    this.currentTopic = topic
     return this
 }
 
@@ -32,7 +32,7 @@ NsqRocket.prototype.landing = function(channel, routingKey, cb) {
 
     this
     .reader
-    .setNsqReader(this.topic, channel)
+    .setNsqReader(this.currentTopic, channel)
     .add(routingKey, function(msg) {
         cb.call(this, msg, init_replier(msg))
     })
@@ -66,7 +66,7 @@ NsqRocket.prototype.landing = function(channel, routingKey, cb) {
 }
 
 NsqRocket.prototype.launch = function(message, routingKey, cb) {
-    let current_topic = this.topic
+    let current_topic = this.currentTopic
 
     if (typeof routingKey == 'function') {
         cb = routingKey
