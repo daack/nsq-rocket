@@ -1,17 +1,23 @@
 {
   "name": "nsq-rocket",
   "version": "0.1.0",
-  "description": "Simple NSQ framework for req/res pattern",
+  "description": "Simple framework to handle request response pattern on nsq.io",
   "main": "rocket.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/daack/nsq-rocket.git"
   },
-  "author": "Matteo Maselli",
-  "license": "ISC",
+  "keywords": [
+    "nsq",
+    "nsq client",
+    "messaging",
+    "task"
+  ],
+  "author": "Matteo Maselli <mat.maselli@gmail.com>",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/daack/nsq-rocket/issues"
   },
@@ -19,5 +25,8 @@
   "dependencies": {
     "node-uuid": "^1.4.7",
     "nsqjs": "^0.7.12"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0"
   }
 }
