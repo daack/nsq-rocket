@@ -2,6 +2,8 @@ const nsqjs = require('nsqjs')
 const uuid = require('node-uuid')
 
 function NsqRocket(opts) {
+    if (!opts.serviceId) throw new Error('serviceId missing')
+
     if (!(this instanceof NsqRocket)) {
         return new NsqRocket(opts)
     }
@@ -49,11 +51,6 @@ NsqRocket.prototype.launch = function(message, routingKey, cb) {
         routingKey = null
     }
 
-    if (typeof cb == 'string') {
-        current_topic = cb
-        cb = null
-    }
-
     const replyKey = uuid.v4()
     const _this = this
 
@@ -80,10 +77,14 @@ NsqRocket.prototype.addReplierReaderKey = function(replyKey, cb) {
     this
     .reader
     .setNsqReader(this.options.serviceId, 'replier')
-    .add(replyKey, cb, true)
+    .add(replyKey, function(msg, done) {
+        cb.call(this, msg.headers.error, msg)
+    }, true)
 }
 
 function RocketReader(rocket, options) {
+    if (!options) throw new Error('Reader options missing')
+
     this.store = new Store()
     this.defaultStore = new Store()
     this.rocket = rocket
@@ -109,7 +110,7 @@ RocketReader.prototype.setNsqReader = function(topic, channel) {
 
         this.store.set(key, readerStore)
     }
-    this.readerStore = readerStore;
+    this.readerStore = readerStore
 
     return this
 }
@@ -128,17 +129,6 @@ RocketReader.prototype.callMessage = function(cb, reader, msg) {
     cb.call(reader, msg, replierFor(msg))
 
     function replierFor(msg) {
-        let topic = null
-        let routingKey = null
-
-        try {
-            const body = msg.json()
-            topic = body.replyTo
-            routingKey = body.replyKey
-        } catch(err) {
-            //
-        }
-
         return (err, message) => {
             if (err) {
                 msg.requeue()
@@ -146,8 +136,14 @@ RocketReader.prototype.callMessage = function(cb, reader, msg) {
                 msg.finish()
             }
 
-            if (topic && routingKey) {
-                _this.rocket.launch(message, routingKey, topic)
+            if (msg.headers.replyTo && msg.headers.replyKey) {
+                _this.rocket.writer.on('ready', function() {
+                    this.publish(msg.headers.replyTo, {
+                        message: message,
+                        routingKey: msg.headers.replyKey,
+                        error: err
+                    })
+                })
             }
         }
     }
@@ -158,23 +154,19 @@ RocketReader.prototype.nsqMessage = function(reader, store) {
     let cb = null
 
     return (msg) => {
-        try {
-            const body = msg.json()
-            routingKey = body.routingKey || null
-        } catch(err) {
+        msg = formatMessage(msg)
 
-        }
-
-        if ((cb = store.get(routingKey)) || (cb = this.defaultStore.get(reader.topic))) {
+        if ((cb = store.get(msg.headers.routingKey)) || (cb = this.defaultStore.get(reader.topic))) {
             this.callMessage(cb, reader, msg)
 
-            if (index = this.onces.indexOf(routingKey)) {
-                store.del(routingKey)
+            if (index = this.onces.indexOf(msg.headers.routingKey)) {
+                store.del(msg.headers.routingKey)
                 this.onces.splice(index, 1)
             }
             return
         }
 
+        //TODO: add to parameters
         (msg.attempts > 5) ? msg.finish() : msg.requeue()
     }
 }
@@ -198,6 +190,8 @@ RocketReader.prototype.nsqError = function(err) {
 }
 
 function RocketWriter(options) {
+    if (!options) throw new Error('Writer options missing')
+
     this.store = new Store()
     this.events = []
 
@@ -226,9 +220,7 @@ RocketWriter.prototype.publish = function(topic, msg) {
 RocketWriter.prototype.emit = function(event) {
     this.events.push(event)
     const s_event = this.store.get(event)
-
     if (!s_event) return
-
     s_event.forEach((cb) => { cb.call(this) })
 }
 
@@ -240,6 +232,29 @@ RocketWriter.prototype.on = function(event, cb) {
 
     this.store.set(event, s_event)
 }
+
+function formatMessage(msg) {
+    msg.headers = {}
+
+    try {
+        const body = msg.json()
+
+        msg.headers = {
+            routingKey: body.routingKey,
+            replyTo: body.replyTo,
+            replyKey: body.replyKey,
+            error: body.error
+        }
+
+        msg.content = body.message
+    } catch (err) {
+        //
+    }
+
+    return msg
+}
+
+//Store
 
 function Store() {
     this.db = {}
