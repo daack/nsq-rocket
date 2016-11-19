@@ -22,14 +22,18 @@ NsqRocket.prototype.topic = function(topic) {
 }
 
 NsqRocket.prototype.landing = function(channel, pattern, cb) {
+    if (typeof pattern == 'string') {
+        pattern = pattern ? { string_key: pattern } : { empty: true }
+    }
+
     if (typeof pattern == 'function') {
         cb = pattern
-        pattern = null
+        pattern = { empty: true }
     }
 
     if (typeof channel == 'function') {
         cb = channel
-        pattern = null
+        pattern = { empty: true }
         channel = uuid.v4()
     }
 
@@ -50,33 +54,36 @@ NsqRocket.prototype.default = function(cb) {
 NsqRocket.prototype.launch = function(message, pattern, cb) {
     if (typeof pattern == 'function') {
         cb = pattern
-        pattern = null
+        pattern = { empty: true }
     }
 
-    const replyKey = uuid.v4()
-    const _this = this
+    if (typeof pattern == 'string') {
+        pattern = pattern ? { string_key: pattern } : { empty: true }
+    }
 
-    this.writer.on('ready', function() {
-        const msg = {}
+    const msg = {}
 
-        msg['message'] = message
+    msg['message'] = message
 
-        if (typeof pattern == 'object') {
-            msg['routingKey'] = JSON.stringify(pattern)
-        } else {
-            msg['routingKey'] = pattern
-        }
+    if (typeof pattern == 'object') {
+        msg['routingKey'] = JSON.stringify(pattern)
+    } else {
+        msg['routingKey'] = pattern
+    }
 
-        if (cb) {
-            _this.addReplierCb(replyKey, cb)
+    if (cb) {
+        const replyKey = { string_key: uuid.v4() }
 
-            msg['replyTo']  = _this.options.serviceId
-            msg['replyKey'] = replyKey
-        }
+        this.addReplierCb(replyKey, cb)
 
-        this.publish(_this.currentTopic, msg, function(err) {
-            if (err && cb) cb.call(this, err)
-        })
+        msg['replyTo']  = this.options.serviceId
+        msg['replyKey'] = JSON.stringify(replyKey)
+    }
+
+    this
+    .writer
+    .publish(this.currentTopic, msg, function(err) {
+        if (err && cb) cb.call(this, err)
     })
 
     return this
