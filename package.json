@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/daack/nsq-rocket#readme",
   "dependencies": {
+    "bloomrun": "^3.0.0",
     "node-uuid": "^1.4.7",
     "nsqjs": "^0.7.12"
   },
