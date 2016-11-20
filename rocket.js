@@ -52,24 +52,21 @@ NsqRocket.prototype.default = function(cb) {
 }
 
 NsqRocket.prototype.launch = function(message, pattern, cb) {
-    if (typeof pattern == 'function') {
+    if (!pattern) {
+        pattern = { empty: true }
+    }
+    else if (typeof pattern == 'function') {
         cb = pattern
         pattern = { empty: true }
     }
-
-    if (typeof pattern == 'string') {
-        pattern = pattern ? { string_key: pattern } : { empty: true }
+    else if (typeof pattern == 'string') {
+        pattern = { string_key: pattern }
     }
 
     const msg = {}
 
     msg['message'] = message
-
-    if (typeof pattern == 'object') {
-        msg['routingKey'] = JSON.stringify(pattern)
-    } else {
-        msg['routingKey'] = pattern
-    }
+    msg['routingKey'] = JSON.stringify(pattern)
 
     if (cb) {
         const replyKey = { string_key: uuid.v4() }
