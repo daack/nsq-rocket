@@ -1,4 +1,4 @@
-const uuid = require('node-uuid')
+const uuid = require('uuid')
 
 const reader = require('./lib/reader')
 const writer = require('./lib/writer')
