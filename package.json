@@ -1,6 +1,6 @@
 {
   "name": "nsq-rocket",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Simple framework to handle request response pattern on nsq.io",
   "main": "rocket.js",
   "scripts": {
