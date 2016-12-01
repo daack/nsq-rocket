@@ -24,6 +24,7 @@ var Rocket = require('nsq-rocket');
 
 var rocket = Rocket({
   serviceId: 'id',
+  loggerLevel: 'info',
   writer: {
     //nsqjs writer configuration
     host: '127.0.0.1',
@@ -85,7 +86,7 @@ rocket
   * <a href="#landing"><code>instance.<b>landing()</b></code></a>
   * <a href="#launch"><code>instance.<b>launch()</b></code></a>
   * <a href="#default"><code>instance.<b>default()</b></code></a>
-  
+
 -------------------------------------------------------
 <a name="constructor"></a>
 ### Rocket([opts])
@@ -95,6 +96,7 @@ Creates a new instance of Rocket.
 Options are:
 
 * `serviceId`
+* `loggerLevel` ['silent', 'info', 'warn', 'error', 'fatal']
 * `reader` (nsqjs reader)
 * `writer` (nsqjs writer)
 
@@ -137,7 +139,7 @@ Set a default cb for the current topic
 -------------------------------------------------------
 <a name="reader"></a>
 ### instance.reader.on(event, data)
-  
+
   * discard -> message
   * error -> error
   * connected -> {host: host, port: port}

@@ -2,6 +2,7 @@ const uuid = require('uuid')
 
 const reader = require('./lib/reader')
 const writer = require('./lib/writer')
+const logger = require('./lib/logger')
 
 function NsqRocket(opts) {
     if (!opts.serviceId) throw new Error('serviceId missing')
@@ -9,6 +10,11 @@ function NsqRocket(opts) {
     if (!(this instanceof NsqRocket)) {
         return new NsqRocket(opts)
     }
+
+    logger.setLevel(opts.loggerLevel || 'info')
+
+    opts.writer['clientId'] = opts.writer['clientId'] || opts.serviceId
+    opts.reader['clientId'] = opts.reader['clientId'] || opts.serviceId
 
     this.options = opts
     this.writer = writer(opts.writer)

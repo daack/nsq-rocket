@@ -13,6 +13,7 @@ const Rocket = require('./../rocket')
 function newIstance() {
     return Rocket({
         serviceId: 'service_id',
+        loggerLevel: 'silent',
         writer: {},
         reader: {}
     })
